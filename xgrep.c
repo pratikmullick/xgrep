@@ -1,46 +1,66 @@
-/* A simple Quicksort Program. Copyright 2019 2020. Pratik Mullick and 
- * Richard W. Marinelli. Please read LICENSE.md for further details. */
-
-/* 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include "xre.h"
 #include <errno.h>
 
-int main(int argc, char **argv)	{
-	// Main function
-	regex_t c_regexp;
-	int return_code;
-	FILE *input_file;
-	
-	if (argc < 2)	{
-		// Something's wrong
-		fprintf(stderr, "Usage: %s regex [file ...]\n", argv[0]);
-		exit(1);
-		}
-	
-	return_code = xregcomp(&c_regexp, argv[1], REG_NEWLINE | REG_ENHANCED);
+static bool h_switch, H_switch, i_switch, v_switch, l_switch, n_switch, o_switch, c_switch;
 
-	if (return_code != 0)	{
-		fprintf(stderr, "Error: %s, pat '%s'.\n", xregmsg(return_code), argv[1]);
-		exit(1);
-		}
+static char * proc_switches(int * p_argc, char ***p_argv)	{
+	// Local variables for argc and argv
+	int argc = *p_argc;
+	char **argv = *p_argv;
+	char *sw;
+	char *error_msg;
 	
-	argc -= 2;
-	argv += 2;
+	// If not an error returns NULL, else returns error message.
+	while (argc > 0 && **argv == '-')	{
+		sw = *argv++;
+		--argc;
+		if (sw[2] != '\0')
+			goto BadSwitch;
+		switch (sw[1])	{
+			default:
+BadSwitch:
+				asprintf(&error_msg, "Invalid switch: '%s'", sw);
+				return error_msg;
+			case 'h':
+				h_switch = true;
+				break;
+			case 'H':
+				H_switch = true;
+				break;
+			case 'i':
+				i_switch = true;
+				break;
+			case 'v':
+				v_switch = true;
+				break;
+			case 'l':
+				l_switch = true;
+				break;
+			case 'n':
+				n_switch = true;
+				break;
+			case 'o':
+				o_switch = true;
+				break;
+			case 'c':
+				c_switch = true;
+				break;
+			}
+		}
+	*p_argc = argc;
+	*p_argv = argv;
+
+	return NULL;
+	}
+	
+static char * proc_file(FILE *file)	{
+// Read the file line by line,
+// Check for switches
+// To determine the output
+
 	for (;;)	{
 		if (argc == 0)	
 			input_file = stdin;
@@ -74,6 +94,60 @@ int main(int argc, char **argv)	{
 				}
 			free(line);
 			}
+		(void) fclose(input_file);
+		if (argc <= 0)
+			break;
+		}
+	}
+
+int main(int argc, char **argv)	{
+	// Main function
+	regex_t c_regexp;
+	int return_code;
+	FILE *input_file;
+	char *proc_switch_error;
+	char *prog_name = argv[0];
+	char *error_msg;
+
+	--argc;
+	++argv;
+	
+	if ((proc_switch_error = proc_switches(&argc,&argv)) != NULL)	{
+		fprintf(stderr,"Switch error: %s\n", proc_switch_error);
+		exit(1);
+		}
+	if (argc < 1)	{
+		// Something's wrong
+		fprintf(stderr, "Usage: %s [-c] [-h] [-H] [-i] [-l] [-n] [-o] [-v] regex [file ...]\n", prog_name);
+		exit(1);
+		}
+		
+	return_code = xregcomp(&c_regexp, argv[0], REG_NEWLINE | REG_ENHANCED);
+	if (return_code != 0)	{
+		fprintf(stderr, "Error: %s, pat '%s'.\n", xregmsg(return_code), argv[1]);
+		exit(1);
+		}
+	
+	argc--;
+	argv++;
+	
+	for (;;)	{
+		if (argc == 0)	
+			input_file = stdin;
+		else		{
+			input_file = fopen(*argv,"r");
+			if (input_file == NULL)	{
+				fprintf(stderr,"%s File Open Error %s\n", *argv, strerror(errno));
+				exit(1);
+			}
+		}
+		argc--; argv++;
+					
+		if ((error_msg = proc_file(input_file)) != NULL)	{
+			fprintf(stderr,"File error: %s\n", error_msg);
+			exit(1);
+			}
+
 		(void) fclose(input_file);
 		if (argc <= 0)
 			break;

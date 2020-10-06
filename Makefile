@@ -1,4 +1,4 @@
-prog = cgrep
+prog = xgrep
 
 $(prog): $(prog).o
 	cc -o $@ $? ../XRE/linux/libxre.a

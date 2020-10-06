@@ -1,3 +1,9 @@
-Add cgrep switches:
--h, -i, -v, -l, -n, -o
-
+Add xgrep switches:
+-H: Help
+-h: Suppress the file name
+-i: Ignore case
+-v: Invert the match (Print lines that don't match)
+-l: File name only
+-n: Prefix each line with line number
+-o: Print only the matching part of the line
+-c: Count
