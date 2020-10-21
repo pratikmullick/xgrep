@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -55,49 +56,36 @@ BadSwitch:
 
 	return NULL;
 	}
-	
-static char * proc_file(FILE *file)	{
+
+static char * proc_file(FILE *input_file, regex_t * pc_regexp)	{
 // Read the file line by line,
 // Check for switches
 // To determine the output
-
+	char * msg = NULL;
+	int return_code;
+	static char err_message[200];
 	for (;;)	{
-		if (argc == 0)	
-			input_file = stdin;
-		else		{
-			input_file = fopen(*argv,"r");
-			if (input_file == NULL)	{
-				fprintf(stderr,"%s File Open Error %s\n", *argv, strerror(errno));
-				exit(1);
-			}
-		}
-		argc--; argv++;
-					
-		for (;;)	{
-			char *line = NULL;
-			size_t len = 0;
-			regmatch_t match[10];
-			if (getline(&line, &len, input_file) < 0)	{
-				if (feof(input_file))
-					break;
-				fprintf(stderr, "Read Error: %s\n", strerror(errno));
-				exit(1);
-				}
-			return_code = xregexec(&c_regexp, line, 10, match, 0);
-			if (return_code == 0)	{
-				// Got a match.
-				fputs(line, stdout);
-				}
-			else if (return_code != REG_NOMATCH)	{
-				fprintf(stderr, "Regular Expression Error: %s\n", xregmsg(return_code));
-				exit(1);
-				}
-			free(line);
-			}
-		(void) fclose(input_file);
-		if (argc <= 0)
+		char *line = NULL;
+		size_t len = 0;
+		regmatch_t match[10];
+		if (getline(&line, &len, input_file) < 0)	{
+			if (feof(input_file))
+				break;
+			sprintf(msg = err_message, "Read Error: %s\n", strerror(errno));
 			break;
+			}
+		return_code = xregexec(pc_regexp, line, 10, match, 0);
+		if (return_code == 0)	{
+			// Got a match.
+			fputs(line, stdout);
+			}
+		else if (return_code != REG_NOMATCH)	{
+			sprintf(msg = err_message, "Regular Expression Error: %s\n", xregmsg(return_code));
+			break;
+			}
+		free(line);
 		}
+	return msg;
 	}
 
 int main(int argc, char **argv)	{
@@ -121,8 +109,8 @@ int main(int argc, char **argv)	{
 		fprintf(stderr, "Usage: %s [-c] [-h] [-H] [-i] [-l] [-n] [-o] [-v] regex [file ...]\n", prog_name);
 		exit(1);
 		}
-		
-	return_code = xregcomp(&c_regexp, argv[0], REG_NEWLINE | REG_ENHANCED);
+#if 1		
+	return_code = xregcomp(&c_regexp, argv[0], i_switch ? REG_ICASE | REG_NEWLINE | REG_ENHANCED : REG_NEWLINE | REG_ENHANCED);
 	if (return_code != 0)	{
 		fprintf(stderr, "Error: %s, pat '%s'.\n", xregmsg(return_code), argv[1]);
 		exit(1);
@@ -140,17 +128,27 @@ int main(int argc, char **argv)	{
 				fprintf(stderr,"%s File Open Error %s\n", *argv, strerror(errno));
 				exit(1);
 			}
+			argc--; argv++;
 		}
-		argc--; argv++;
 					
-		if ((error_msg = proc_file(input_file)) != NULL)	{
+		if ((error_msg = proc_file(input_file, &c_regexp)) != NULL)	{
 			fprintf(stderr,"File error: %s\n", error_msg);
 			exit(1);
 			}
 
 		(void) fclose(input_file);
-		if (argc <= 0)
+		// Just going through the loop once, prevents reading from stdin if a file was specified.
+		if (argc == 0)
 			break;
 		}
+#else
+	// Print out all switch, argc, and argv values.
+	fprintf(stderr, "Switch values: h %d, H %d, i %d, v %d, l %d, n %d, o %d, c %d\n", h_switch, H_switch, i_switch, v_switch, l_switch, n_switch, o_switch, c_switch);
+	fprintf(stderr, "Argc: %d\n", argc);
+	while (argc > 0)	{
+		fprintf(stderr, "Argv: %s\n", *argv++);
+		argc--;
+		}
+#endif
 	return 0;
 }
