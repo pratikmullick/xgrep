@@ -1,7 +1,7 @@
 prog = xgrep
 
 $(prog): $(prog).o
-	cc -o $@ $? ../XRE/linux/libxre.a
+	clang -o $@ $? ../XRE/linux/libxre.a
 
 $(prog).o: $(prog).c
-	cc -c -o $@ $?
+	clang -c -o $@ $?
