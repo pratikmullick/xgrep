@@ -18,7 +18,7 @@ static char * proc_switches(int * p_argc, char ***p_argv)	{
 	while (argc > 0 && **argv == '-')	{
 		sw = *argv++;
 		--argc;
-		if (sw[2] != '\0')
+:		if (sw[2] != '\0')
 			goto BadSwitch;
 		switch (sw[1])	{
 			default:
@@ -57,12 +57,13 @@ BadSwitch:
 	return NULL;
 	}
 
-static char * proc_file(FILE *input_file, regex_t * pc_regexp)	{
+static char * proc_file(FILE *input_file, regex_t * pc_regexp, long * match_count)	{
 // Read the file line by line,
 // Check for switches
 // To determine the output
 	char * msg = NULL;
 	int return_code;
+	long line_number = 0;
 	static char err_message[200];
 	for (;;)	{
 		char *line = NULL;
@@ -74,12 +75,21 @@ static char * proc_file(FILE *input_file, regex_t * pc_regexp)	{
 			sprintf(msg = err_message, "Read Error: %s\n", strerror(errno));
 			break;
 			}
+		// Counting line numbers
+		line_number++;
 		return_code = xregexec(pc_regexp, line, 10, match, 0);
-		if (return_code == 0)	{
+		if ((return_code == REG_NOMATCH && v_switch == true) || (return_code == 0 && v_switch == false))	{
+
 			// Got a match.
-			fputs(line, stdout);
+			if (c_switch)
+				(*match_count)++;
+			else	{
+				if (n_switch)
+					printf("%ld:", line_number);
+				fputs(line, stdout);
+				}
 			}
-		else if (return_code != REG_NOMATCH)	{
+		else if (return_code != REG_NOMATCH && return_code != 0)	{
 			sprintf(msg = err_message, "Regular Expression Error: %s\n", xregmsg(return_code));
 			break;
 			}
@@ -96,6 +106,7 @@ int main(int argc, char **argv)	{
 	char *proc_switch_error;
 	char *prog_name = argv[0];
 	char *error_msg;
+	long match_count;
 
 	--argc;
 	++argv;
@@ -120,6 +131,7 @@ int main(int argc, char **argv)	{
 	argv++;
 	
 	for (;;)	{
+		match_count = 0;
 		if (argc == 0)	
 			input_file = stdin;
 		else		{
@@ -131,12 +143,15 @@ int main(int argc, char **argv)	{
 			argc--; argv++;
 		}
 					
-		if ((error_msg = proc_file(input_file, &c_regexp)) != NULL)	{
+		if ((error_msg = proc_file(input_file, &c_regexp, &match_count)) != NULL)	{
 			fprintf(stderr,"File error: %s\n", error_msg);
 			exit(1);
 			}
 
 		(void) fclose(input_file);
+		if (c_switch)
+			printf("%ld\n", match_count);
+
 		// Just going through the loop once, prevents reading from stdin if a file was specified.
 		if (argc == 0)
 			break;
