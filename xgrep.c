@@ -18,7 +18,7 @@ static char * proc_switches(int * p_argc, char ***p_argv)	{
 	while (argc > 0 && **argv == '-')	{
 		sw = *argv++;
 		--argc;
-:		if (sw[2] != '\0')
+		if (sw[2] != '\0')
 			goto BadSwitch;
 		switch (sw[1])	{
 			default:
@@ -57,11 +57,11 @@ BadSwitch:
 	return NULL;
 	}
 
-static char * proc_file(FILE *input_file, regex_t * pc_regexp, long * match_count)	{
+static char *proc_file(FILE *input_file, regex_t *pc_regexp, long *match_count, char *filename)	{
 // Read the file line by line,
 // Check for switches
 // To determine the output
-	char * msg = NULL;
+	char *msg = NULL;
 	int return_code;
 	long line_number = 0;
 	static char err_message[200];
@@ -84,9 +84,15 @@ static char * proc_file(FILE *input_file, regex_t * pc_regexp, long * match_coun
 			if (c_switch)
 				(*match_count)++;
 			else	{
+				if (filename != NULL)
+					printf("%s:", filename);
 				if (n_switch)
 					printf("%ld:", line_number);
-				fputs(line, stdout);
+				if (o_switch)
+					// Prints only the part of the line that matched
+					printf("%.*s\n", (int) (match[0].rm_eo - match[0].rm_so), line + match[0].rm_so);
+				else
+					fputs(line, stdout);
 				}
 			}
 		else if (return_code != REG_NOMATCH && return_code != 0)	{
@@ -107,6 +113,7 @@ int main(int argc, char **argv)	{
 	char *prog_name = argv[0];
 	char *error_msg;
 	long match_count;
+	bool filename_print = false;
 
 	--argc;
 	++argv;
@@ -129,7 +136,12 @@ int main(int argc, char **argv)	{
 	
 	argc--;
 	argv++;
-	
+
+	if (argc > 1 && !h_switch)	{
+		// switch to enable file name printing
+		filename_print = true;
+	}
+	// For loop to check for match in each file. If no file is specified, read from stdin.
 	for (;;)	{
 		match_count = 0;
 		if (argc == 0)	
@@ -143,7 +155,7 @@ int main(int argc, char **argv)	{
 			argc--; argv++;
 		}
 					
-		if ((error_msg = proc_file(input_file, &c_regexp, &match_count)) != NULL)	{
+		if ((error_msg = proc_file(input_file, &c_regexp, &match_count, filename_print ? *(argv - 1) : NULL)) != NULL)	{
 			fprintf(stderr,"File error: %s\n", error_msg);
 			exit(1);
 			}
