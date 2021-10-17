@@ -1,3 +1,3 @@
-#Installation Notes
+# Installation Notes
 
-Needs XRE to be installed. XRE can be found at https://github.com/italia389/XRE
+Needs XRE to be installed. XRE can be found at [here](https://github.com/italia389/XRE).
